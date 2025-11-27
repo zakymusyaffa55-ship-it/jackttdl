@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Downloader V5</title>
+    <style>
+        /* CSS PASTI KELIHATAN (High Contrast) */
+        body {
+            background-color: #000000; /* Hitam */
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .kotak-utama {
+            border: 2px solid #ffffff; /* Garis Putih Jelas */
+            background-color: #111111;
+            padding: 20px;
+            width: 100%;
+            max-width: 450px;
+            border-radius: 10px;
+            text-align: center;
+            margin-top: 50px;
+        }
+
+        h1 { color: #00ffcc; margin-top: 0; }
+        p { color: #ccc; margin-bottom: 20px; }
+
+        /* INPUT DIPAKSA PUTIH AGAR TIDAK HILANG */
+        input {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            background-color: #ffffff !important; /* Wajib Putih */
+            color: #000000 !important; /* Teks Hitam */
+            border: 3px solid #00ffcc;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            box-sizing: border-box; /* Agar tidak melebar keluar */
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        /* TOMBOL KONTRAS TINGGI */
+        button {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            background-color: #ffcc00; /* Kuning Emas */
+            color: #000000;
+            font-weight: bold;
+            font-size: 18px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover { background-color: #ffaa00; }
+        button:disabled { background-color: #555; color: #fff; cursor: not-allowed; }
+
+        /* AREA HASIL */
+        #hasil { display: none; margin-top: 20px; border-top: 1px solid #333; padding-top: 20px; }
+        
+        .box-media { background: #222; padding: 10px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #555; }
+        video { width: 100%; border-radius: 5px; }
+        img { width: 100%; border-radius: 5px; margin-bottom: 5px; }
+
+        .btn-dl {
+            display: block; width: 100%; padding: 12px; margin-bottom: 10px;
+            text-decoration: none; font-weight: bold; border-radius: 5px; box-sizing: border-box;
+        }
+        .hd { background: white; color: black; }
+        .mp3 { background: #25D366; color: white; }
+
+        #status { color: #ffcc00; margin-top: 10px; display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="kotak-utama">
+        <h1>⚡ TikTok V5</h1>
+        <p>Tempel Link Dibawah Ini:</p>
+
+        <input type="text" id="linkInput" placeholder="https://vm.tiktok.com/..." autocomplete="off">
+        
+        <button id="tombolCari" onclick="gasDownload()">🔍 CARI SEKARANG</button>
+        <div id="status">⏳ Sedang mencari...</div>
+
+        <div id="hasil">
+            <div id="infoUser" style="margin-bottom:10px; font-weight:bold;"></div>
+            
+            <div id="wadahVideo" class="box-media" style="display:none;">
+                <video id="player" controls></video>
+            </div>
+
+            <div id="wadahFoto" class="box-media" style="display:none;"></div>
+
+            <a id="btnHD" class="btn-dl hd" href="#" target="_blank">⬇️ DOWNLOAD VIDEO HD</a>
+            <a id="btnMP3" class="btn-dl mp3" href="#" target="_blank">🎵 DOWNLOAD MP3</a>
+        </div>
+    </div>
+
+    <script>
+        // ROTASI SERVER (Supaya tidak error koneksi)
+        const PROXIES = [
+            'https://corsproxy.io/?',
+            'https://api.allorigins.win/raw?url=',
+            'https://thingproxy.freeboard.io/fetch/'
+        ];
+
+        async function gasDownload() {
+            const url = document.getElementById('linkInput').value.trim();
+            const btn = document.getElementById('tombolCari');
+            const status = document.getElementById('status');
+            const hasil = document.getElementById('hasil');
+
+            if (!url) { alert("Link kosong! Isi dulu."); return; }
+
+            // Reset
+            hasil.style.display = 'none';
+            document.getElementById('wadahVideo').style.display = 'none';
+            document.getElementById('wadahFoto').style.display = 'none';
+            
+            btn.disabled = true;
+            btn.innerText = "MEMPROSES...";
+            status.style.display = 'block';
+
+            try {
+                // Panggil Fungsi Pintar
+                const data = await fetchPintar(url, status);
+                
+                if (data.code === 0) {
+                    renderHasil(data.data);
+                    hasil.style.display = 'block';
+                } else {
+                    alert("Video tidak ditemukan!");
+                }
+            } catch (e) {
+                alert("Gagal: " + e.message);
+            } finally {
+                status.style.display = 'none';
+                btn.disabled = false;
+                btn.innerText = "🔍 CARI SEKARANG";
+            }
+        }
+
+        // Fungsi Coba-Coba Jalur (Anti Macet)
+        async function fetchPintar(targetUrl,
